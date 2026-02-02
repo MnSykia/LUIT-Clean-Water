@@ -85,15 +85,17 @@ def login():
             return jsonify({
                 'success': True,
                 'message': 'Login successful',
-                'token': custom_token.decode('utf-8'),
+                'token': custom_token.decode('utf-8') if isinstance(custom_token, bytes) else custom_token,
                 'userType': user_type,
                 'email': email
             }), 200
-        except:
-            return jsonify({'error': 'Invalid credentials'}), 401
+        except Exception as auth_error:
+            logger.error(f"Firebase Auth error during login: {str(auth_error)}", exc_info=True)
+            return jsonify({'error': 'Invalid credentials', 'details': str(auth_error)}), 401
     
     except Exception as e:
-        return jsonify({'error': str(e)}), 400
+        logger.error(f"Error during login: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 400
 
 @auth_bp.route('/verify-token', methods=['POST'])
 def verify_token():
