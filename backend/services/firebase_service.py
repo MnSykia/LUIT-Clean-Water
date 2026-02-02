@@ -2,6 +2,9 @@ import firebase_admin
 from firebase_admin import credentials, db, storage, auth
 import os
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 class FirebaseService:
     """Firebase service for database operations"""
@@ -63,21 +66,35 @@ class FirebaseService:
     
     def get_water_quality_reports(self, district=None):
         """Get water quality reports"""
-        ref = db.reference('water_quality_reports')
-        reports = ref.get()
-        
-        if district and reports:
-            return {k: v for k, v in reports.items() if v.get('district') == district}
-        return reports or {}
+        try:
+            ref = db.reference('water_quality_reports')
+            reports = ref.get()
+            
+            if district and reports:
+                return {k: v for k, v in reports.items() if v.get('district') == district}
+            return reports or {}
+        except Exception as e:
+            # Handle 404 (path doesn't exist yet) as empty data
+            if '404' in str(e) or 'NotFoundError' in str(type(e).__name__):
+                logger.info(f"Database path 'water_quality_reports' not found - returning empty results (this is normal for new databases)")
+                return {}
+            raise
     
     def get_active_reports(self):
         """Get active contamination reports"""
-        ref = db.reference('water_quality_reports')
-        reports = ref.get()
-        
-        if reports:
-            return {k: v for k, v in reports.items() if v.get('status') == 'contaminated' and v.get('active') is True}
-        return {}
+        try:
+            ref = db.reference('water_quality_reports')
+            reports = ref.get()
+            
+            if reports:
+                return {k: v for k, v in reports.items() if v.get('status') == 'contaminated' and v.get('active') is True}
+            return {}
+        except Exception as e:
+            # Handle 404 (path doesn't exist yet) as empty data
+            if '404' in str(e) or 'NotFoundError' in str(type(e).__name__):
+                logger.info(f"Database path 'water_quality_reports' not found - returning empty results (this is normal for new databases)")
+                return {}
+            raise
     
     def update_report_status(self, report_id, status):
         """Update report status"""
@@ -101,15 +118,27 @@ class FirebaseService:
     
     def get_phc_by_email(self, email):
         """Get PHC by email"""
-        ref = db.reference('users/phc')
-        users = ref.order_by_child('email').equal_to(email).get()
-        return users
+        try:
+            ref = db.reference('users/phc')
+            users = ref.order_by_child('email').equal_to(email).get()
+            return users
+        except Exception as e:
+            if '404' in str(e) or 'NotFoundError' in str(type(e).__name__):
+                logger.info(f"Database path 'users/phc' not found - returning None")
+                return None
+            raise
     
     def get_lab_by_email(self, email):
         """Get Lab by email"""
-        ref = db.reference('users/lab')
-        users = ref.order_by_child('email').equal_to(email).get()
-        return users
+        try:
+            ref = db.reference('users/lab')
+            users = ref.order_by_child('email').equal_to(email).get()
+            return users
+        except Exception as e:
+            if '404' in str(e) or 'NotFoundError' in str(type(e).__name__):
+                logger.info(f"Database path 'users/lab' not found - returning None")
+                return None
+            raise
     
     def upload_file(self, file_path, destination_path):
         """Upload file to Firebase Storage"""
@@ -127,11 +156,17 @@ class FirebaseService:
     
     def get_lab_solutions(self, district=None):
         """Get lab solutions"""
-        ref = db.reference('lab_solutions')
-        solutions = ref.get()
-        
-        if district and solutions:
-            return {k: v for k, v in solutions.items() if v.get('district') == district}
-        return solutions or {}
+        try:
+            ref = db.reference('lab_solutions')
+            solutions = ref.get()
+            
+            if district and solutions:
+                return {k: v for k, v in solutions.items() if v.get('district') == district}
+            return solutions or {}
+        except Exception as e:
+            if '404' in str(e) or 'NotFoundError' in str(type(e).__name__):
+                logger.info(f"Database path 'lab_solutions' not found - returning empty results")
+                return {}
+            raise
 
 firebase_service = FirebaseService()
