@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 
 const AuthContext = createContext()
 
@@ -8,7 +8,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
 
   // Function to check and update auth from localStorage
-  const checkAuth = () => {
+  const checkAuth = useCallback(() => {
     const token = localStorage.getItem('authToken')
     const storedUserType = localStorage.getItem('userType')
     const email = localStorage.getItem('email')
@@ -16,11 +16,13 @@ export const AuthProvider = ({ children }) => {
     if (token && storedUserType && email) {
       setUser({ email })
       setUserType(storedUserType)
+      return true
     } else {
       setUser(null)
       setUserType(null)
+      return false
     }
-  }
+  }, [])
 
   useEffect(() => {
     // Initial check on mount
@@ -34,9 +36,20 @@ export const AuthProvider = ({ children }) => {
       }
     }
 
+    // Poll localStorage every 100ms for the first second to catch login in same tab
+    let pollCount = 0
+    const pollInterval = setInterval(() => {
+      checkAuth()
+      pollCount++
+      if (pollCount > 10) clearInterval(pollInterval) // Stop after 1 second
+    }, 100)
+
     window.addEventListener('storage', handleStorageChange)
-    return () => window.removeEventListener('storage', handleStorageChange)
-  }, [])
+    return () => {
+      clearInterval(pollInterval)
+      window.removeEventListener('storage', handleStorageChange)
+    }
+  }, [checkAuth])
 
   const logout = () => {
     setUser(null)

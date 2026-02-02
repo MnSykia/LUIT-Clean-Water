@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Mail, Lock, Building2, MapPin, Droplet, AlertCircle } from 'lucide-react'
 import api from '../api'
+import { useAuth } from '../AuthContext'
 
 export default function LoginRegisterPage() {
   const navigate = useNavigate()
+  const { logout: authLogout } = useAuth()
   const [isLogin, setIsLogin] = useState(true)
   const [userType, setUserType] = useState('phc') // 'phc' or 'lab'
   const [formData, setFormData] = useState({
@@ -57,17 +59,18 @@ export default function LoginRegisterPage() {
           localStorage.setItem('email', response.data.email)
           localStorage.setItem('district', response.data.district || 'Assam')
 
-          // Small delay to allow AuthContext to update
-          setTimeout(() => {
-            // Redirect to appropriate dashboard
-            if (userType === 'phc') {
-              console.log('Navigating to PHC dashboard...')
-              navigate('/phc-dashboard')
-            } else {
-              console.log('Navigating to Lab dashboard...')
-              navigate('/lab-dashboard')
-            }
-          }, 100)
+          // Redirect immediately - the layout will handle checking auth
+          if (userType === 'phc') {
+            console.log('Navigating to PHC dashboard...')
+            navigate('/phc-dashboard', { replace: true })
+          } else {
+            console.log('Navigating to Lab dashboard...')
+            navigate('/lab-dashboard', { replace: true })
+          }
+        } else {
+          console.log('Login response success=false')
+          setError('Login failed')
+        }
         } else {
           console.log('Login response success=false')
           setError('Login failed')
