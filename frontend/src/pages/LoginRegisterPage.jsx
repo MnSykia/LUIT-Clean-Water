@@ -95,6 +95,11 @@ export default function LoginRegisterPage() {
         }
       }
     } catch (err) {
+      console.error('Auth error:', err)
+      console.error('Backend error details:', err.response?.data)
+      if (err.response?.data?.traceback) {
+        console.error('Full traceback:', err.response.data.traceback)
+      }
       setError(err.response?.data?.error || 'An error occurred')
     } finally {
       setLoading(false)
