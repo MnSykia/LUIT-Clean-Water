@@ -44,17 +44,8 @@ export const AuthProvider = ({ children }) => {
       }
     }
 
-    // Poll localStorage every 50ms for the first 500ms to catch login in same tab
-    let pollCount = 0
-    const pollInterval = setInterval(() => {
-      checkAuth()
-      pollCount++
-      if (pollCount > 10) clearInterval(pollInterval) // Stop after 500ms
-    }, 50)
-
     window.addEventListener('storage', handleStorageChange)
     return () => {
-      clearInterval(pollInterval)
       window.removeEventListener('storage', handleStorageChange)
     }
   }, [checkAuth])
