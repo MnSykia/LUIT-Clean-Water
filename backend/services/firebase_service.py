@@ -59,10 +59,11 @@ class FirebaseService:
     
     def add_water_quality_report(self, report_data):
         """Add a water quality report"""
-        ref = db.reference('water_quality_reports')
-        new_report = ref.push()
-        new_report.set(report_data)
-        return new_report.key
+        import uuid
+        report_id = str(uuid.uuid4())
+        ref = db.reference(f'water_quality_reports/{report_id}')
+        ref.set(report_data)
+        return report_id
     
     def get_water_quality_reports(self, district=None):
         """Get water quality reports"""
@@ -104,17 +105,19 @@ class FirebaseService:
     
     def add_phc_user(self, user_data):
         """Add PHC user"""
-        ref = db.reference('users/phc')
-        new_user = ref.push()
-        new_user.set(user_data)
-        return new_user.key
+        import uuid
+        user_id = str(uuid.uuid4())
+        ref = db.reference(f'users/phc/{user_id}')
+        ref.set(user_data)
+        return user_id
     
     def add_lab_user(self, user_data):
         """Add Lab user"""
-        ref = db.reference('users/lab')
-        new_user = ref.push()
-        new_user.set(user_data)
-        return new_user.key
+        import uuid
+        user_id = str(uuid.uuid4())
+        ref = db.reference(f'users/lab/{user_id}')
+        ref.set(user_data)
+        return user_id
     
     def get_phc_by_email(self, email):
         """Get PHC by email"""
@@ -149,10 +152,11 @@ class FirebaseService:
     
     def add_lab_solution(self, solution_data):
         """Add lab solution"""
-        ref = db.reference('lab_solutions')
-        new_solution = ref.push()
-        new_solution.set(solution_data)
-        return new_solution.key
+        import uuid
+        solution_id = str(uuid.uuid4())
+        ref = db.reference(f'lab_solutions/{solution_id}')
+        ref.set(solution_data)
+        return solution_id
     
     def get_lab_solutions(self, district=None):
         """Get lab solutions"""
