@@ -71,10 +71,6 @@ export default function LoginRegisterPage() {
           console.log('Login response success=false')
           setError('Login failed')
         }
-        } else {
-          console.log('Login response success=false')
-          setError('Login failed')
-        }
       } else {
         // Register
         if (formData.password !== formData.confirmPassword) {
