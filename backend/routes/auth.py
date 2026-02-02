@@ -82,12 +82,21 @@ def login():
             user = auth.get_user_by_email(email)
             custom_token = auth.create_custom_token(user.uid)
             
+            # Extract district from user data
+            user_district = None
+            if user_data:
+                # user_data is a dict with user_id as key
+                for uid, udata in user_data.items():
+                    user_district = udata.get('district', 'Assam')
+                    break
+            
             return jsonify({
                 'success': True,
                 'message': 'Login successful',
                 'token': custom_token.decode('utf-8') if isinstance(custom_token, bytes) else custom_token,
                 'userType': user_type,
-                'email': email
+                'email': email,
+                'district': user_district or 'Assam'
             }), 200
         except Exception as auth_error:
             logger.error(f"Firebase Auth error during login: {str(auth_error)}", exc_info=True)

@@ -55,6 +55,7 @@ export default function LoginRegisterPage() {
           localStorage.setItem('authToken', response.data.token)
           localStorage.setItem('userType', userType)
           localStorage.setItem('email', response.data.email)
+          localStorage.setItem('district', response.data.district || 'Assam')
 
           // Redirect to appropriate dashboard
           if (userType === 'phc') {
