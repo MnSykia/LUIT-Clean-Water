@@ -57,14 +57,17 @@ export default function LoginRegisterPage() {
           localStorage.setItem('email', response.data.email)
           localStorage.setItem('district', response.data.district || 'Assam')
 
-          // Redirect to appropriate dashboard
-          if (userType === 'phc') {
-            console.log('Navigating to PHC dashboard...')
-            navigate('/phc-dashboard')
-          } else {
-            console.log('Navigating to Lab dashboard...')
-            navigate('/lab-dashboard')
-          }
+          // Small delay to allow AuthContext to update
+          setTimeout(() => {
+            // Redirect to appropriate dashboard
+            if (userType === 'phc') {
+              console.log('Navigating to PHC dashboard...')
+              navigate('/phc-dashboard')
+            } else {
+              console.log('Navigating to Lab dashboard...')
+              navigate('/lab-dashboard')
+            }
+          }, 100)
         } else {
           console.log('Login response success=false')
           setError('Login failed')
