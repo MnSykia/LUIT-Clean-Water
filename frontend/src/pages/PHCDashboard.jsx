@@ -1,0 +1,368 @@
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { LogOut, AlertTriangle, CheckCircle, MapPin, FileText, Droplet } from 'lucide-react'
+import api from '../api'
+import { useAuth } from '../AuthContext'
+
+export default function PHCDashboard() {
+  const navigate = useNavigate()
+  const { logout } = useAuth()
+  const [activeTab, setActiveTab] = useState('reports')
+  const [activeReports, setActiveReports] = useState([])
+  const [previousSolutions, setPreviousSolutions] = useState([])
+  const [hotspots, setHotspots] = useState([])
+  const [selectedReport, setSelectedReport] = useState(null)
+  const [showSendModal, setShowSendModal] = useState(false)
+  const [sendFormData, setSendFormData] = useState({
+    description: '',
+    phcNotes: ''
+  })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const userEmail = localStorage.getItem('email') || 'PHC User'
+  const userDistrict = localStorage.getItem('district') || 'Assam'
+
+  useEffect(() => {
+    fetchActiveReports()
+    fetchPreviousSolutions()
+    fetchHotspots()
+  }, [])
+
+  const fetchActiveReports = async () => {
+    try {
+      const response = await api.get(`/phc/active-reports/${userDistrict}`)
+      setActiveReports(Object.entries(response.data.data || {}).map(([id, data]) => ({
+        id,
+        ...data
+      })))
+    } catch (err) {
+      console.error('Error fetching active reports:', err)
+      setError('Failed to load active reports')
+    }
+  }
+
+  const fetchPreviousSolutions = async () => {
+    try {
+      const response = await api.get('/phc/previous-solutions', {
+        params: { district: userDistrict }
+      })
+      setPreviousSolutions(Object.entries(response.data.data || {}).map(([id, data]) => ({
+        id,
+        ...data
+      })))
+    } catch (err) {
+      console.error('Error fetching solutions:', err)
+    }
+  }
+
+  const fetchHotspots = async () => {
+    try {
+      const response = await api.get('/phc/hotspot-map', {
+        params: { district: userDistrict }
+      })
+      setHotspots(response.data.data || [])
+    } catch (err) {
+      console.error('Error fetching hotspots:', err)
+    }
+  }
+
+  const handleSendToLab = async () => {
+    if (!selectedReport) return
+    if (!sendFormData.description) {
+      setError('Please enter a description')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const response = await api.post('/phc/send-to-lab', {
+        reportId: selectedReport.id,
+        description: sendFormData.description,
+        phcNotes: sendFormData.phcNotes,
+        areaName: selectedReport.areaName,
+        district: userDistrict,
+        latitude: selectedReport.latitude,
+        longitude: selectedReport.longitude,
+        severity: selectedReport.severity
+      })
+
+      if (response.data.success) {
+        alert('Report sent to lab successfully!')
+        setShowSendModal(false)
+        setSendFormData({ description: '', phcNotes: '' })
+        setSelectedReport(null)
+        fetchActiveReports()
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to send report')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleMarkClean = async (reportId) => {
+    if (!window.confirm('Mark this area as clean?')) return
+
+    try {
+      const response = await api.post(`/phc/mark-clean/${reportId}`, {
+        verified: true
+      })
+
+      if (response.data.success) {
+        alert('Area marked as clean!')
+        fetchActiveReports()
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to mark as clean')
+    }
+  }
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login')
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-100">
+      {/* Header */}
+      <header className="bg-white shadow-md">
+        <nav className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <Droplet className="text-blue-600" size={32} />
+            <div>
+              <h1 className="text-2xl font-bold text-blue-600">PHC Dashboard</h1>
+              <p className="text-sm text-gray-600">{userEmail}</p>
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 btn-danger"
+          >
+            <LogOut size={20} />
+            Logout
+          </button>
+        </nav>
+      </header>
+
+      {/* Error Message */}
+      {error && (
+        <div className="max-w-7xl mx-auto px-6 py-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+          {error}
+          <button
+            onClick={() => setError('')}
+            className="ml-4 text-red-800 font-bold"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* Tabs */}
+      <div className="bg-white border-b">
+        <div className="max-w-7xl mx-auto px-6 flex gap-8">
+          {['reports', 'solutions', 'hotspots'].map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`py-4 px-2 border-b-2 font-medium transition-colors ${
+                activeTab === tab
+                  ? 'text-blue-600 border-blue-600'
+                  : 'text-gray-600 border-transparent'
+              }`}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        {/* Active Reports Tab */}
+        {activeTab === 'reports' && (
+          <div>
+            <h2 className="text-2xl font-bold mb-6 text-gray-800">Active Reports in {userDistrict}</h2>
+            {activeReports.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {activeReports.map(report => (
+                  <div key={report.id} className="card border-l-4 border-red-500">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-800">{report.areaName}</h3>
+                        <p className="text-sm text-gray-600">{report.problem}</p>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        report.severity === 'high' ? 'bg-red-200 text-red-800' :
+                        report.severity === 'medium' ? 'bg-yellow-200 text-yellow-800' :
+                        'bg-orange-200 text-orange-800'
+                      }`}>
+                        {report.severity?.toUpperCase()}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 mb-4 text-sm text-gray-600">
+                      <p>📍 Location: {report.latitude}, {report.longitude}</p>
+                      <p>🏭 Source: {report.sourceType}</p>
+                      <p>📌 Pin: {report.pinCode}</p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setSelectedReport(report)
+                          setShowSendModal(true)
+                        }}
+                        className="flex-1 btn-primary text-sm py-2"
+                      >
+                        Send to Lab
+                      </button>
+                      <button
+                        onClick={() => handleMarkClean(report.id)}
+                        className="flex-1 btn-success text-sm py-2"
+                      >
+                        Mark Clean
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="card text-center py-12">
+                <CheckCircle className="mx-auto text-green-600 mb-4" size={48} />
+                <p className="text-gray-600 text-lg">No active reports in your district</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Previous Solutions Tab */}
+        {activeTab === 'solutions' && (
+          <div>
+            <h2 className="text-2xl font-bold mb-6 text-gray-800">Previous Solutions</h2>
+            {previousSolutions.length > 0 ? (
+              <div className="space-y-4">
+                {previousSolutions.map(solution => (
+                  <div key={solution.id} className="card">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1">
+                        <h3 className="font-bold text-gray-800">{solution.areaName}</h3>
+                        <p className="text-sm text-gray-600 mt-1">{solution.solutionDescription}</p>
+                      </div>
+                      <span className="status-clean">Resolved</span>
+                    </div>
+                    <div className="flex gap-4 text-sm">
+                      <a href="#" className="text-blue-600 hover:underline flex items-center gap-1">
+                        <FileText size={16} /> Test Result
+                      </a>
+                      <a href="#" className="text-blue-600 hover:underline flex items-center gap-1">
+                        <FileText size={16} /> Solution
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="card text-center py-12">
+                <p className="text-gray-600">No previous solutions available</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Hotspots Tab */}
+        {activeTab === 'hotspots' && (
+          <div>
+            <h2 className="text-2xl font-bold mb-6 text-gray-800">Water Quality Hotspots</h2>
+            {hotspots.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {hotspots.map(hotspot => (
+                  <div key={hotspot.id} className="card">
+                    <div className="flex items-center gap-3 mb-3">
+                      <MapPin className={hotspot.isActive ? 'text-red-600' : 'text-green-600'} />
+                      <h3 className="font-bold text-lg text-gray-800">{hotspot.areaName}</h3>
+                    </div>
+                    <div className="space-y-2 text-sm text-gray-600 mb-4">
+                      <p>📍 Lat: {hotspot.latitude.toFixed(4)}, Lon: {hotspot.longitude.toFixed(4)}</p>
+                      <p>⚠️ Severity: {hotspot.severity}</p>
+                      <p className={`font-medium ${hotspot.isActive ? 'text-red-600' : 'text-green-600'}`}>
+                        {hotspot.isActive ? '🔴 Active Contamination' : '🟢 Clean'}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="card text-center py-12">
+                <p className="text-gray-600">No hotspots recorded</p>
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+
+      {/* Send to Lab Modal */}
+      {showSendModal && selectedReport && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h2 className="text-2xl font-bold mb-4">Send Report to Lab</h2>
+            <p className="text-gray-600 mb-4">Area: <strong>{selectedReport.areaName}</strong></p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Description *
+                </label>
+                <textarea
+                  value={sendFormData.description}
+                  onChange={(e) => setSendFormData(prev => ({
+                    ...prev,
+                    description: e.target.value
+                  }))}
+                  placeholder="Detailed description for the lab"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows="4"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  PHC Notes
+                </label>
+                <textarea
+                  value={sendFormData.phcNotes}
+                  onChange={(e) => setSendFormData(prev => ({
+                    ...prev,
+                    phcNotes: e.target.value
+                  }))}
+                  placeholder="Additional notes"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows="3"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={handleSendToLab}
+                  disabled={loading}
+                  className="flex-1 btn-success disabled:opacity-50"
+                >
+                  {loading ? 'Sending...' : 'Send to Lab'}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowSendModal(false)
+                    setSelectedReport(null)
+                  }}
+                  className="flex-1 btn-secondary"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
