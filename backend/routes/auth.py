@@ -2,6 +2,10 @@ from flask import Blueprint, request, jsonify
 from firebase_admin import auth
 from services.firebase_service import firebase_service
 from datetime import datetime
+import logging
+import traceback
+
+logger = logging.getLogger(__name__)
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -48,7 +52,8 @@ def register():
         }), 201
     
     except Exception as e:
-        return jsonify({'error': str(e)}), 400
+        logger.error(f"Error during registration: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 400
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
