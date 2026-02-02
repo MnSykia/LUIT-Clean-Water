@@ -1,18 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MapPin, AlertCircle, Droplet } from 'lucide-react'
+import { AlertCircle, Droplet } from 'lucide-react'
 import api from '../api'
 
 export default function ReportingPage() {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
     problem: '',
-    latitude: '',
-    longitude: '',
-    severity: 'medium',
-    sourceType: 'domestic',
-    areaName: '',
+    sourceType: '',
     pinCode: '',
+    localityName: '',
     district: 'Assam'
   })
   const [loading, setLoading] = useState(false)
@@ -28,18 +25,22 @@ export default function ReportingPage() {
     'Sichar', 'Sonitpur', 'Tinsukia'
   ]
 
-  useEffect(() => {
-    // Get user's location
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((position) => {
-        setFormData(prev => ({
-          ...prev,
-          latitude: position.coords.latitude.toFixed(6),
-          longitude: position.coords.longitude.toFixed(6)
-        }))
-      })
-    }
-  }, [])
+  const waterSources = [
+    'Handpump',
+    'Dug well/Open well',
+    'Tube well/Borewell',
+    'Piped water supply',
+    'River water',
+    'Ponds/Reservoir'
+  ]
+
+  const waterProblems = [
+    'Muddy water',
+    'Reddish brown water',
+    'Pungent smell',
+    'Metallic taste',
+    'Health symptom'
+  ]
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -50,7 +51,7 @@ export default function ReportingPage() {
   }
 
   const generateSMSFormat = () => {
-    const format = `${formData.problem} ${formData.pinCode} ${formData.severity} ${formData.sourceType}`
+    const format = `Water Issue Report - Problem: ${formData.problem}, Source: ${formData.sourceType}, Locality: ${formData.localityName}, PIN: ${formData.pinCode}, District: ${formData.district}`
     setSmsFormat(format)
   }
 
@@ -61,7 +62,7 @@ export default function ReportingPage() {
     setSuccess(false)
 
     try {
-      if (!formData.problem || !formData.latitude || !formData.longitude) {
+      if (!formData.problem || !formData.sourceType || !formData.pinCode || !formData.localityName || !formData.district) {
         setError('Please fill in all required fields')
         setLoading(false)
         return
@@ -69,12 +70,9 @@ export default function ReportingPage() {
 
       const response = await api.post('/reporting/submit-report', {
         problem: formData.problem,
-        latitude: parseFloat(formData.latitude),
-        longitude: parseFloat(formData.longitude),
-        severity: formData.severity,
         sourceType: formData.sourceType,
-        areaName: formData.areaName,
         pinCode: formData.pinCode,
+        localityName: formData.localityName,
         district: formData.district
       })
 
@@ -82,12 +80,9 @@ export default function ReportingPage() {
         setSuccess(true)
         setFormData({
           problem: '',
-          latitude: '',
-          longitude: '',
-          severity: 'medium',
-          sourceType: 'domestic',
-          areaName: '',
+          sourceType: '',
           pinCode: '',
+          localityName: '',
           district: 'Assam'
         })
         setSmsFormat('')
@@ -144,118 +139,23 @@ export default function ReportingPage() {
             {/* Problem Description */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Problem Description *
+                Water Problem *
               </label>
-              <textarea
+              <select
                 name="problem"
                 value={formData.problem}
                 onChange={handleInputChange}
-                placeholder="Describe the water contamination issue"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows="4"
                 required
-              />
-            </div>
-
-            {/* Area Name */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Area Name
-              </label>
-              <input
-                type="text"
-                name="areaName"
-                value={formData.areaName}
-                onChange={handleInputChange}
-                placeholder="e.g., Guwahati Main Water Tank"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            {/* Pin Code */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Pin Code
-              </label>
-              <input
-                type="text"
-                name="pinCode"
-                value={formData.pinCode}
-                onChange={handleInputChange}
-                placeholder="Enter pin code"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            {/* District */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                District
-              </label>
-              <select
-                name="district"
-                value={formData.district}
-                onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {assam_districts.map(district => (
-                  <option key={district} value={district}>{district}</option>
+                <option value="">-- Select Problem --</option>
+                {waterProblems.map(problem => (
+                  <option key={problem} value={problem}>{problem}</option>
                 ))}
               </select>
             </div>
 
-            {/* Location */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Latitude *
-                </label>
-                <input
-                  type="number"
-                  step="0.000001"
-                  name="latitude"
-                  value={formData.latitude}
-                  onChange={handleInputChange}
-                  placeholder="GPS Latitude"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Longitude *
-                </label>
-                <input
-                  type="number"
-                  step="0.000001"
-                  name="longitude"
-                  value={formData.longitude}
-                  onChange={handleInputChange}
-                  placeholder="GPS Longitude"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Severity */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Severity Level *
-              </label>
-              <select
-                name="severity"
-                value={formData.severity}
-                onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
-            </div>
-
-            {/* Source Type */}
+            {/* Type of Source */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Type of Source *
@@ -265,12 +165,62 @@ export default function ReportingPage() {
                 value={formData.sourceType}
                 onChange={handleInputChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
               >
-                <option value="domestic">Domestic Waste</option>
-                <option value="industrial">Industrial Pollution</option>
-                <option value="agricultural">Agricultural Runoff</option>
-                <option value="natural">Natural Contamination</option>
-                <option value="other">Other</option>
+                <option value="">-- Select Source --</option>
+                {waterSources.map(source => (
+                  <option key={source} value={source}>{source}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Pin Code */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Pin Code *
+              </label>
+              <input
+                type="text"
+                name="pinCode"
+                value={formData.pinCode}
+                onChange={handleInputChange}
+                placeholder="Enter pin code"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
+
+            {/* Locality Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Locality Name *
+              </label>
+              <input
+                type="text"
+                name="localityName"
+                value={formData.localityName}
+                onChange={handleInputChange}
+                placeholder="Enter locality name"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
+
+            {/* District */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                District *
+              </label>
+              <select
+                name="district"
+                value={formData.district}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              >
+                {assam_districts.map(district => (
+                  <option key={district} value={district}>{district}</option>
+                ))}
               </select>
             </div>
 
@@ -285,13 +235,10 @@ export default function ReportingPage() {
               </button>
               {smsFormat && (
                 <div>
-                  <p className="text-sm text-gray-600 mb-2">SMS to send (without SMS module):</p>
-                  <div className="bg-white p-3 border border-gray-300 rounded text-sm font-mono">
+                  <p className="text-sm text-gray-600 mb-2">SMS to send:</p>
+                  <div className="bg-white p-3 border border-gray-300 rounded text-sm font-mono break-words">
                     {smsFormat}
                   </div>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Format: [Problem] [Pin Code] [Severity] [Source Type]
-                  </p>
                 </div>
               )}
             </div>

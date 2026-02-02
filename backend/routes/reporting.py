@@ -25,25 +25,19 @@ def submit_report():
         data = request.get_json()
         
         problem = data.get('problem')
-        latitude = float(data.get('latitude', 0)) if data.get('latitude') else None
-        longitude = float(data.get('longitude', 0)) if data.get('longitude') else None
-        severity = data.get('severity')  # low, medium, high
-        source_type = data.get('sourceType')  # domestic, industrial, agricultural, etc.
-        area_name = data.get('areaName')
+        source_type = data.get('sourceType')
         pin_code = data.get('pinCode')
+        locality_name = data.get('localityName')
         district = data.get('district')
         
-        if not all([problem, latitude, longitude, severity, source_type]):
+        if not all([problem, source_type, pin_code, locality_name, district]):
             return jsonify({'error': 'Missing required fields'}), 400
         
         report_data = {
             'problem': problem,
-            'latitude': latitude,
-            'longitude': longitude,
-            'severity': severity,
             'sourceType': source_type,
-            'areaName': area_name,
             'pinCode': pin_code,
+            'localityName': locality_name,
             'district': district,
             'status': 'reported',
             'active': True,
@@ -60,7 +54,6 @@ def submit_report():
             'reportId': report_id,
             'problem': problem,
             'pinCode': pin_code,
-            'severity': severity,
             'sourceType': source_type
         }), 201
     
@@ -152,14 +145,15 @@ def format_sms():
     """Get formatted SMS text for reporting"""
     try:
         problem = request.args.get('problem')
-        pin_code = request.args.get('pinCode')
-        severity = request.args.get('severity')
         source_type = request.args.get('sourceType')
+        pin_code = request.args.get('pinCode')
+        locality_name = request.args.get('localityName')
+        district = request.args.get('district')
         
-        if not all([problem, pin_code, severity, source_type]):
+        if not all([problem, source_type, pin_code, locality_name, district]):
             return jsonify({'error': 'Missing required fields'}), 400
         
-        sms_text = f"{problem} {pin_code} {severity} {source_type}"
+        sms_text = f"Water Issue Report - Problem: {problem}, Source: {source_type}, Locality: {locality_name}, PIN: {pin_code}, District: {district}"
         
         return jsonify({
             'success': True,
