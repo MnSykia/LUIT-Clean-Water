@@ -41,23 +41,32 @@ export default function LoginRegisterPage() {
     try {
       if (isLogin) {
         // Login
+        console.log('Attempting login...')
         const response = await api.post('/auth/login', {
           email: formData.email,
           password: formData.password,
           userType: userType
         })
 
+        console.log('Login response:', response.data)
+
         if (response.data.success) {
+          console.log('Login successful, storing token and redirecting...')
           localStorage.setItem('authToken', response.data.token)
           localStorage.setItem('userType', userType)
           localStorage.setItem('email', response.data.email)
 
           // Redirect to appropriate dashboard
           if (userType === 'phc') {
+            console.log('Navigating to PHC dashboard...')
             navigate('/phc-dashboard')
           } else {
+            console.log('Navigating to Lab dashboard...')
             navigate('/lab-dashboard')
           }
+        } else {
+          console.log('Login response success=false')
+          setError('Login failed')
         }
       } else {
         // Register
