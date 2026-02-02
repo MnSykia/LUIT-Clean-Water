@@ -26,14 +26,19 @@ const ProtectedRoute = ({ children, requiredUserType }) => {
 }
 
 function AppRoutes() {
-  const { user, userType } = useAuth()
+  const { user, userType, loading } = useAuth()
+
+  // Don't render anything during initial auth check
+  if (loading) {
+    return <div className="flex justify-center items-center h-screen bg-gradient-to-br from-blue-50 to-blue-100">Loading authentication...</div>
+  }
   
   try {
     return (
       <Routes>
         {/* Home page - Landing page (public) */}
         <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={user ? <Navigate to="/phc-dashboard" replace /> : <LoginRegisterPage />} />
+        <Route path="/login" element={user && userType ? <Navigate to={userType === 'phc' ? '/phc-dashboard' : '/lab-dashboard'} replace /> : <LoginRegisterPage />} />
         <Route path="/report" element={<ReportingPage />} />
         <Route
           path="/phc-dashboard"

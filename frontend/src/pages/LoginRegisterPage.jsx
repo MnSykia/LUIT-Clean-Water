@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Mail, Lock, Building2, MapPin, Droplet, AlertCircle } from 'lucide-react'
 import api from '../api'
@@ -7,6 +7,7 @@ import { useAuth } from '../AuthContext'
 export default function LoginRegisterPage() {
   const navigate = useNavigate()
   const { setAuthState } = useAuth()
+  const navigationAttempted = useRef(false)
   const [isLogin, setIsLogin] = useState(true)
   const [userType, setUserType] = useState('phc') // 'phc' or 'lab'
   const [formData, setFormData] = useState({
@@ -18,6 +19,13 @@ export default function LoginRegisterPage() {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Cleanup guard on unmount
+  useEffect(() => {
+    return () => {
+      navigationAttempted.current = false
+    }
+  }, [])
 
   if (!navigate) {
     return <div className="flex items-center justify-center h-screen text-red-600">Error: Navigation not available</div>
@@ -58,6 +66,14 @@ export default function LoginRegisterPage() {
 
         if (response.data.success) {
           console.log('Login successful, storing token and redirecting...')
+          
+          // Guard: prevent multiple navigation attempts
+          if (navigationAttempted.current) {
+            console.log('Navigation already attempted, skipping duplicate')
+            return
+          }
+          navigationAttempted.current = true
+          
           localStorage.setItem('authToken', response.data.token)
           localStorage.setItem('userType', userType)
           localStorage.setItem('email', response.data.email)
@@ -66,14 +82,16 @@ export default function LoginRegisterPage() {
           // Manually set auth state immediately
           setAuthState(response.data.email, userType)
 
-          // Redirect immediately - the layout will handle checking auth
-          if (userType === 'phc') {
-            console.log('Navigating to PHC dashboard...')
-            navigate('/phc-dashboard', { replace: true })
-          } else {
-            console.log('Navigating to Lab dashboard...')
-            navigate('/lab-dashboard', { replace: true })
-          }
+          // Redirect - use setTimeout to ensure state is updated
+          setTimeout(() => {
+            if (userType === 'phc') {
+              console.log('Navigating to PHC dashboard...')
+              navigate('/phc-dashboard', { replace: true })
+            } else {
+              console.log('Navigating to Lab dashboard...')
+              navigate('/lab-dashboard', { replace: true })
+            }
+          }, 0)
         } else {
           console.log('Login response success=false')
           setError('Login failed')
