@@ -11,6 +11,7 @@ export default function LandingPage() {
   const [statistics, setStatistics] = useState({})
   const [userLocation, setUserLocation] = useState(null)
   const [showStatusPopup, setShowStatusPopup] = useState(true)
+  const [contaminatedAreas, setContaminatedAreas] = useState([])
 
   useEffect(() => {
     // Get user's location
@@ -25,6 +26,7 @@ export default function LandingPage() {
     fetchActiveReports()
     fetchReportedIssues()
     fetchStatistics()
+    fetchContaminatedAreas()
   }, [])
 
   const fetchAreaStatus = async (lat, lon) => {
@@ -79,6 +81,15 @@ export default function LandingPage() {
       if (error.response?.data?.traceback) {
         console.error('Full traceback:', error.response.data.traceback)
       }
+    }
+  }
+
+  const fetchContaminatedAreas = async () => {
+    try {
+      const response = await api.get('/phc/contaminated-areas')
+      setContaminatedAreas(Object.values(response.data.data || []))
+    } catch (error) {
+      console.error('Error fetching contaminated areas:', error)
     }
   }
 
@@ -217,6 +228,31 @@ export default function LandingPage() {
             </div>
           )}
         </section>
+
+        {/* Contaminated Areas Alert */}
+        {contaminatedAreas.length > 0 && (
+          <section className="mb-12">
+            <h2 className="text-2xl font-bold mb-6 text-red-800">⚠️ Contaminated Areas - Testing in Progress</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {contaminatedAreas.map((area, idx) => (
+                <div key={idx} className="card border-l-4 border-red-600 bg-red-50">
+                  <div className="flex items-start gap-3 mb-3">
+                    <AlertTriangle className="text-red-600 flex-shrink-0 mt-1" size={24} />
+                    <div className="flex-1">
+                      <h3 className="font-bold text-red-800 text-lg">📌 PIN: {area.pinCode}</h3>
+                      <p className="text-sm text-red-700">{area.localityName}, {area.district}</p>
+                    </div>
+                  </div>
+                  <div className="bg-white rounded p-2 mb-2">
+                    <p className="text-xs text-gray-600 mb-1"><strong>Status:</strong> Testing Lab Visit in Progress</p>
+                    <p className="text-xs text-gray-600"><strong>Reports:</strong> {area.reportCount} ({area.severity})</p>
+                  </div>
+                  <p className="text-sm text-red-700">Please avoid using water from this area</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Reported Issues */}
         <section>

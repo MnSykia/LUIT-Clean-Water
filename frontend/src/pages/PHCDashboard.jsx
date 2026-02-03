@@ -22,6 +22,7 @@ export default function PHCDashboard() {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [sentToLabPins, setSentToLabPins] = useState([])
 
   const userEmail = localStorage.getItem('email') || 'PHC User'
   const userDistrict = localStorage.getItem('district') || 'Assam'
@@ -41,7 +42,18 @@ export default function PHCDashboard() {
     fetchHotspots()
     fetchReportedIssues()
     fetchStatistics()
+    fetchSentToLabPins()
   }, [])
+
+  const fetchSentToLabPins = async () => {
+    try {
+      const response = await api.get('/phc/contaminated-areas')
+      const pins = Object.values(response.data.data || {}).map(area => area.pinCode)
+      setSentToLabPins(pins)
+    } catch (err) {
+      console.error('Error fetching sent to lab PINs:', err)
+    }
+  }
 
   const fetchActiveReports = async () => {
     try {
@@ -390,7 +402,12 @@ export default function PHCDashboard() {
 
                     {/* Action Buttons */}
                     <div className="flex gap-2">
-                      {group.count >= 5 ? (
+                      {sentToLabPins.includes(group.pinCode) ? (
+                        <div className="flex-1 p-3 bg-blue-100 text-center rounded-lg border-2 border-blue-300">
+                          <p className="text-sm text-blue-800 font-medium">✓ Already sent to lab</p>
+                          <p className="text-xs text-blue-600 mt-1">Awaiting solution from testing lab</p>
+                        </div>
+                      ) : group.count >= 5 ? (
                         <button
                           onClick={() => {
                             setSelectedReport(group)

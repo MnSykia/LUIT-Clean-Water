@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from services.firebase_service import firebase_service
+from firebase_admin import firestore
 from datetime import datetime
 from werkzeug.utils import secure_filename
 
@@ -165,3 +166,36 @@ def get_hotspot_map():
     
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+@phc_bp.route('/contaminated-areas', methods=['GET'])
+def get_contaminated_areas():
+    """Get all contaminated areas (sent to lab but not yet cleaned)"""
+    try:
+        # Get all lab assignments that are still pending or in progress
+        assignments = firebase_service.db.collection('lab_assignments').where(
+            filter=firestore.FieldFilter('status', 'in', ['pending_lab_visit', 'solution_uploaded', 'phc_cleaning'])
+        ).stream()
+        
+        contaminated = {}
+        for doc in assignments:
+            data = doc.to_dict()
+            contaminated[doc.id] = {
+                'pinCode': data.get('pinCode'),
+                'localityName': data.get('localityName'),
+                'district': data.get('district'),
+                'reportCount': data.get('reportCount'),
+                'severity': data.get('severity'),
+                'status': data.get('status')
+            }
+        
+        return jsonify({
+            'success': True,
+            'data': contaminated
+        }), 200
+    
+    except Exception as e:
+        import logging
+        logging.error(f"Error fetching contaminated areas: {str(e)}")
+        return jsonify({
+            'success': True,
+            'data': {}
+        }), 200
