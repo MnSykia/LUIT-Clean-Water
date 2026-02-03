@@ -279,6 +279,13 @@ def debug_contaminated_areas():
             'total_assignments': len(debug_data),
             'data': debug_data
         }), 200
+    
+    except Exception as e:
+        print(f"❌ Error in debug endpoint: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 # ==================== PIN CODE CONVERSION ENDPOINTS ====================
 
