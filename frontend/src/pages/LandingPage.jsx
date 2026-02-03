@@ -410,7 +410,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="bg-gray-800 text-white text-center py-6 mt-12">
-        <p>&copy; 2024 LUIT Clean Water - Hackathon Project. All rights reserved.</p>
+        <p>&copy; 2026 LUIT Clean Water - Hackathon Project. All rights reserved.</p>
       </footer>
     </div>
   )
