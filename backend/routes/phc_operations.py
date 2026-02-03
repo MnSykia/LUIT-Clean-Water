@@ -35,13 +35,13 @@ def send_to_lab():
         report_id = data.get('reportId')
         description = data.get('description')
         phc_notes = data.get('phcNotes')
-        area_name = data.get('areaName')
+        locality_name = data.get('localityName')
         district = data.get('district')
-        latitude = data.get('latitude')
-        longitude = data.get('longitude')
-        severity = data.get('severity')
+        pin_code = data.get('pinCode')
+        source_type = data.get('sourceType')
+        problem = data.get('problem')
         
-        if not all([report_id, description, area_name, district]):
+        if not all([report_id, description, locality_name, district]):
             return jsonify({'error': 'Missing required fields'}), 400
         
         # Update report status to contaminated
@@ -50,13 +50,13 @@ def send_to_lab():
         # Create lab assignment
         lab_assignment = {
             'reportId': report_id,
-            'areaName': area_name,
+            'localityName': locality_name,
             'district': district,
+            'pinCode': pin_code,
+            'sourceType': source_type,
+            'problem': problem,
             'description': description,
             'phcNotes': phc_notes,
-            'latitude': latitude,
-            'longitude': longitude,
-            'severity': severity,
             'status': 'pending',
             'createdAt': datetime.now().isoformat(),
             'phcSubmittedAt': datetime.now().isoformat()

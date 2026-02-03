@@ -131,11 +131,11 @@ export default function PHCDashboard() {
         reportId: selectedReport.id,
         description: sendFormData.description,
         phcNotes: sendFormData.phcNotes,
-        areaName: selectedReport.areaName,
-        district: userDistrict,
-        latitude: selectedReport.latitude,
-        longitude: selectedReport.longitude,
-        severity: selectedReport.severity
+        localityName: selectedReport.localityName,
+        district: selectedReport.district,
+        pinCode: selectedReport.pinCode,
+        sourceType: selectedReport.sourceType,
+        problem: selectedReport.problem
       })
 
       if (response.data.success) {
@@ -312,22 +312,18 @@ export default function PHCDashboard() {
                   <div key={report.id} className="card border-l-4 border-red-500">
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <h3 className="text-lg font-bold text-gray-800">{report.areaName}</h3>
+                        <h3 className="text-lg font-bold text-gray-800">{report.localityName}</h3>
                         <p className="text-sm text-gray-600">{report.problem}</p>
                       </div>
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        report.severity === 'high' ? 'bg-red-200 text-red-800' :
-                        report.severity === 'medium' ? 'bg-yellow-200 text-yellow-800' :
-                        'bg-orange-200 text-orange-800'
-                      }`}>
-                        {report.severity?.toUpperCase()}
+                      <span className="px-3 py-1 rounded-full text-sm font-medium bg-red-200 text-red-800">
+                        {report.status?.toUpperCase()}
                       </span>
                     </div>
 
                     <div className="space-y-2 mb-4 text-sm text-gray-600">
-                      <p>📍 Location: {report.latitude}, {report.longitude}</p>
-                      <p>🏭 Source: {report.sourceType}</p>
-                      <p>📌 Pin: {report.pinCode}</p>
+                      <p>💧 Source: {report.sourceType}</p>
+                      <p>📌 Pin Code: {report.pinCode}</p>
+                      <p>🗺️ District: {report.district}</p>
                     </div>
 
                     <div className="flex gap-2">
