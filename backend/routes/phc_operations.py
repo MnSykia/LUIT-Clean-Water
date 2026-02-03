@@ -36,51 +36,55 @@ def get_active_reports_by_district(district):
 
 @phc_bp.route('/send-to-lab', methods=['POST'])
 def send_to_lab():
-    """Send a report to water lab and mark area as contaminated"""
+    """Send grouped reports to water lab"""
     try:
         data = request.get_json()
         
-        report_id = data.get('reportId')
-        description = data.get('description')
-        phc_notes = data.get('phcNotes')
+        pin_code = data.get('pinCode')
         locality_name = data.get('localityName')
         district = data.get('district')
-        pin_code = data.get('pinCode')
-        source_type = data.get('sourceType')
-        problem = data.get('problem')
+        report_count = data.get('reportCount')
+        severity = data.get('severity')
+        report_ids = data.get('reportIds', [])
+        problems = data.get('problems', [])
+        sources = data.get('sources', [])
+        description = data.get('description')
+        phc_notes = data.get('phcNotes')
         
-        if not all([report_id, description, locality_name, district]):
-            return jsonify({'error': 'Missing required fields'}), 400
+        if not all([pin_code, locality_name, district, description]) or report_count < 5:
+            return jsonify({'error': 'Missing required fields or insufficient reports (min 5)'}), 400
         
-        # Update report status to contaminated
-        firebase_service.update_report_status(report_id, 'contaminated')
+        # Update all reports to 'contaminated' status
+        for report_id in report_ids:
+            firebase_service.update_report_status(report_id, 'contaminated')
         
-        # Create lab assignment
+        # Create lab assignment for the PIN code area
         lab_assignment = {
-            'reportId': report_id,
+            'pinCode': pin_code,
             'localityName': locality_name,
             'district': district,
-            'pinCode': pin_code,
-            'sourceType': source_type,
-            'problem': problem,
+            'reportCount': report_count,
+            'severity': severity,
+            'reportIds': report_ids,
+            'problems': problems,
+            'sources': sources,
             'description': description,
             'phcNotes': phc_notes,
-            'status': 'pending',
+            'status': 'pending_lab_visit',
             'createdAt': datetime.now().isoformat(),
             'phcSubmittedAt': datetime.now().isoformat()
         }
         
-        ref = firebase_service.db.reference('lab_assignments')
-        new_assignment = ref.push()
-        new_assignment.set(lab_assignment)
+        assignment_id = firebase_service.add_lab_assignment(lab_assignment)
         
         return jsonify({
             'success': True,
-            'message': 'Report sent to lab',
-            'assignmentId': new_assignment.key
+            'message': f'Sent {report_count} reports from PIN {pin_code} to lab',
+            'assignmentId': assignment_id
         }), 201
     
     except Exception as e:
+        return jsonify({'error': str(e)}), 400
         return jsonify({'error': str(e)}), 400
 
 @phc_bp.route('/mark-clean/<report_id>', methods=['POST'])

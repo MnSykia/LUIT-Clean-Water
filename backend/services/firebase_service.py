@@ -101,6 +101,13 @@ class FirebaseService:
         self.db.collection('water_quality_reports').document(report_id).update({'status': status})
         return True
     
+    def add_lab_assignment(self, assignment_data):
+        """Add lab assignment"""
+        import uuid
+        assignment_id = str(uuid.uuid4())
+        self.db.collection('lab_assignments').document(assignment_id).set(assignment_data)
+        return assignment_id
+    
     def add_phc_user(self, user_data):
         """Add PHC user"""
         import uuid

@@ -54,7 +54,37 @@ export default function PHCDashboard() {
         ...data
       }))
       console.log('Processed reports:', reports)
-      setActiveReports(reports)
+      
+      // Group reports by PIN code
+      const grouped = reports.reduce((acc, report) => {
+        const pinCode = report.pinCode || 'Unknown'
+        if (!acc[pinCode]) {
+          acc[pinCode] = {
+            pinCode,
+            locality: report.localityName,
+            district: report.district,
+            reports: [],
+            count: 0,
+            severity: 'none'
+          }
+        }
+        acc[pinCode].reports.push(report)
+        acc[pinCode].count++
+        
+        // Calculate severity based on count
+        if (acc[pinCode].count >= 20) {
+          acc[pinCode].severity = 'severe'
+        } else if (acc[pinCode].count >= 10) {
+          acc[pinCode].severity = 'medium'
+        } else if (acc[pinCode].count >= 5) {
+          acc[pinCode].severity = 'mild'
+        }
+        
+        return acc
+      }, {})
+      
+      console.log('Grouped by PIN code:', grouped)
+      setActiveReports(Object.values(grouped))
     } catch (err) {
       console.error('Error fetching active reports:', err)
       setError('Failed to load active reports')
@@ -132,14 +162,16 @@ export default function PHCDashboard() {
     setLoading(true)
     try {
       const response = await api.post('/phc/send-to-lab', {
-        reportId: selectedReport.id,
-        description: sendFormData.description,
-        phcNotes: sendFormData.phcNotes,
-        localityName: selectedReport.localityName,
-        district: selectedReport.district,
         pinCode: selectedReport.pinCode,
-        sourceType: selectedReport.sourceType,
-        problem: selectedReport.problem
+        localityName: selectedReport.locality,
+        district: selectedReport.district,
+        reportCount: selectedReport.count,
+        severity: selectedReport.severity,
+        reportIds: selectedReport.reports.map(r => r.id),
+        problems: [...new Set(selectedReport.reports.map(r => r.problem))],
+        sources: [...new Set(selectedReport.reports.map(r => r.sourceType))],
+        description: sendFormData.description,
+        phcNotes: sendFormData.phcNotes
       })
 
       if (response.data.success) {
@@ -311,41 +343,73 @@ export default function PHCDashboard() {
           <div>
             <h2 className="text-2xl font-bold mb-6 text-gray-800">Active Reports in {userDistrict}</h2>
             {activeReports.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {activeReports.map(report => (
-                  <div key={report.id} className="card border-l-4 border-red-500">
+              <div className="space-y-6">
+                {activeReports.map(group => (
+                  <div key={group.pinCode} className={`card border-l-4 ${
+                    group.severity === 'severe' ? 'border-red-600 bg-red-50' :
+                    group.severity === 'medium' ? 'border-orange-500 bg-orange-50' :
+                    group.severity === 'mild' ? 'border-yellow-500 bg-yellow-50' :
+                    'border-gray-300'
+                  }`}>
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <h3 className="text-lg font-bold text-gray-800">{report.localityName}</h3>
-                        <p className="text-sm text-gray-600">{report.problem}</p>
+                        <h3 className="text-xl font-bold text-gray-800">📌 PIN: {group.pinCode}</h3>
+                        <p className="text-sm text-gray-600">{group.locality}, {group.district}</p>
                       </div>
-                      <span className="px-3 py-1 rounded-full text-sm font-medium bg-red-200 text-red-800">
-                        {report.status?.toUpperCase()}
-                      </span>
+                      <div className="text-right">
+                        <div className="text-3xl font-bold text-gray-800">{group.count}</div>
+                        <div className="text-xs text-gray-500">Reports</div>
+                        {group.severity !== 'none' && (
+                          <span className={`mt-2 inline-block px-3 py-1 rounded-full text-xs font-bold ${
+                            group.severity === 'severe' ? 'bg-red-600 text-white' :
+                            group.severity === 'medium' ? 'bg-orange-500 text-white' :
+                            'bg-yellow-500 text-white'
+                          }`}>
+                            {group.severity.toUpperCase()}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="space-y-2 mb-4 text-sm text-gray-600">
-                      <p>💧 Source: {report.sourceType}</p>
-                      <p>📌 Pin Code: {report.pinCode}</p>
-                      <p>🗺️ District: {report.district}</p>
+                    {/* Problem Summary */}
+                    <div className="mb-4 p-3 bg-white rounded border border-gray-200">
+                      <p className="text-sm font-medium text-gray-700 mb-2">Reported Issues:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {[...new Set(group.reports.map(r => r.problem))].map(problem => (
+                          <span key={problem} className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                            {problem}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {[...new Set(group.reports.map(r => r.sourceType))].map(source => (
+                          <span key={source} className="text-xs px-2 py-1 bg-purple-100 text-purple-800 rounded">
+                            💧 {source}
+                          </span>
+                        ))}
+                      </div>
                     </div>
 
+                    {/* Action Buttons */}
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          setSelectedReport(report)
-                          setShowSendModal(true)
-                        }}
-                        className="flex-1 btn-primary text-sm py-2"
-                      >
-                        Send to Lab
-                      </button>
-                      <button
-                        onClick={() => handleMarkClean(report.id)}
-                        className="flex-1 btn-success text-sm py-2"
-                      >
-                        Mark Clean
-                      </button>
+                      {group.count >= 5 ? (
+                        <button
+                          onClick={() => {
+                            setSelectedReport(group)
+                            setShowSendModal(true)
+                          }}
+                          className="flex-1 btn-primary text-sm py-2"
+                        >
+                          🔬 Send to Testing Lab ({group.count} reports)
+                        </button>
+                      ) : (
+                        <div className="flex-1 p-3 bg-gray-100 text-center rounded-lg border-2 border-dashed border-gray-300">
+                          <p className="text-sm text-gray-600">
+                            Need {5 - group.count} more report(s) to send to lab
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">Threshold: 5 reports</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
