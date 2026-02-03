@@ -30,12 +30,38 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Enable CORS with simple setup
+# Enable CORS with comprehensive setup
 CORS(app, 
-     origins=["https://luit-clean-water-plum.vercel.app", "https://luit-clean-water.vercel.app", "http://localhost:3000", "http://localhost:5173"],
+     origins=["https://luit-clean-water-plum.vercel.app", 
+              "https://luit-clean-water.vercel.app", 
+              "http://localhost:3000", 
+              "http://localhost:5173",
+              "http://localhost:5000"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-     allow_headers=["Content-Type", "Authorization"],
-     supports_credentials=True)
+     allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+     expose_headers=["Content-Type", "X-Total-Count"],
+     supports_credentials=True,
+     max_age=3600)
+
+# Add additional CORS headers to all responses
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    response.headers.add('Access-Control-Expose-Headers', 'Content-Type')
+    return response
+
+# Handle preflight OPTIONS requests explicitly
+@app.before_request
+def handle_preflight():
+    from flask import request
+    if request.method == 'OPTIONS':
+        response = app.make_default_options_response()
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
 
 # Configuration
 app.config['ENV'] = os.getenv('FLASK_ENV', 'development')
