@@ -43,25 +43,6 @@ CORS(app,
      supports_credentials=True,
      max_age=3600)
 
-# Add additional CORS headers to all responses
-@app.after_request
-def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    response.headers.add('Access-Control-Expose-Headers', 'Content-Type')
-    return response
-
-# Handle preflight OPTIONS requests explicitly
-@app.before_request
-def handle_preflight():
-    from flask import request
-    if request.method == 'OPTIONS':
-        response = app.make_default_options_response()
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-        return response
 
 # Configuration
 app.config['ENV'] = os.getenv('FLASK_ENV', 'development')
