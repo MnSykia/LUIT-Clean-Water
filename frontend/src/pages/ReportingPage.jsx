@@ -10,7 +10,7 @@ export default function ReportingPage() {
     sourceType: '',
     pinCode: '',
     localityName: '',
-    district: 'Assam'
+    district: ''
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -83,7 +83,7 @@ export default function ReportingPage() {
           sourceType: '',
           pinCode: '',
           localityName: '',
-          district: 'Assam'
+          district: ''
         })
         setSmsFormat('')
 
@@ -218,6 +218,7 @@ export default function ReportingPage() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               >
+                <option value="">-- Select District --</option>
                 {assam_districts.map(district => (
                   <option key={district} value={district}>{district}</option>
                 ))}
