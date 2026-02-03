@@ -1,5 +1,7 @@
 # LUIT Clean Water - Hackathon Project
 
+**🌐 Live Website:** https://luit-clean-water-plum.vercel.app/
+
 A comprehensive water quality monitoring and management system for tracking contaminated water bodies and coordinating between PHCs (Public Health Centers) and Water Treatment Labs across Assam.
 
 ## Features
