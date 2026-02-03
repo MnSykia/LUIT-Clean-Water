@@ -109,6 +109,7 @@ export default function PHCDashboard() {
   const fetchStatistics = async () => {
     try {
       const response = await api.get('/water-quality/statistics', {
+        params: { district: userDistrict },
         headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
       })
       setStatistics(response.data || {})

@@ -80,17 +80,27 @@ def get_statistics():
     try:
         district = request.args.get('district')
         
+        # Get all reports for the district
         reports = firebase_service.get_water_quality_reports(district)
-        active = firebase_service.get_active_reports()
         
         total_reports = len(reports) if reports else 0
-        total_active = len(active) if active else 0
+        
+        # Active issues = reports with status 'reported' or 'contaminated' AND active=True
+        active_issues = 0
+        cleaned_areas = 0
+        
+        if reports:
+            for report in reports.values():
+                if report.get('status') in ['reported', 'contaminated'] and report.get('active') is True:
+                    active_issues += 1
+                elif report.get('status') == 'cleaned':
+                    cleaned_areas += 1
         
         return jsonify({
             'success': True,
             'totalReports': total_reports,
-            'activeReports': total_active,
-            'cleanAreas': total_reports - total_active
+            'activeReports': active_issues,
+            'cleanAreas': cleaned_areas
         }), 200
     
     except Exception as e:

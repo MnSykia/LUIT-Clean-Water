@@ -78,17 +78,19 @@ class FirebaseService:
             return {}
     
     def get_active_reports(self):
-        """Get active contamination reports"""
+        """Get active contamination reports (both reported and contaminated)"""
         try:
+            # Get reports with active=True
             docs = self.db.collection('water_quality_reports').where(
-                filter=firestore.FieldFilter('status', '==', 'contaminated')
-            ).where(
                 filter=firestore.FieldFilter('active', '==', True)
             ).stream()
             
             reports = {}
             for doc in docs:
-                reports[doc.id] = doc.to_dict()
+                data = doc.to_dict()
+                # Include both 'reported' and 'contaminated' status
+                if data.get('status') in ['reported', 'contaminated']:
+                    reports[doc.id] = data
             return reports
         except Exception as e:
             logger.info(f"No active reports found or error: {str(e)}")
