@@ -17,6 +17,20 @@ export default function LandingPage() {
 
   // Haversine distance calculation (in km)
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    // Validate inputs
+    if (typeof lat1 !== 'number' || typeof lon1 !== 'number' || 
+        typeof lat2 !== 'number' || typeof lon2 !== 'number') {
+      console.error('Invalid coordinate types:', { lat1, lon1, lat2, lon2 })
+      return Infinity
+    }
+    
+    // Validate coordinate ranges
+    if (Math.abs(lat1) > 90 || Math.abs(lon1) > 180 || 
+        Math.abs(lat2) > 90 || Math.abs(lon2) > 180) {
+      console.error('Coordinates out of valid range:', { lat1, lon1, lat2, lon2 })
+      return Infinity
+    }
+    
     const R = 6371 // Earth radius in km
     const dLat = (lat2 - lat1) * Math.PI / 180
     const dLon = (lon2 - lon1) * Math.PI / 180
@@ -24,7 +38,11 @@ export default function LandingPage() {
               Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
               Math.sin(dLon/2) * Math.sin(dLon/2)
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
-    return R * c
+    const distance = R * c
+    
+    console.debug(`Distance calc: (${lat1},${lon1}) to (${lat2},${lon2}) = ${distance.toFixed(3)}km`)
+    
+    return distance
   }
 
   useEffect(() => {
@@ -123,27 +141,60 @@ export default function LandingPage() {
     try {
       const response = await api.get('/phc/contaminated-areas')
       const areas = Object.values(response.data.data || [])
+      
+      console.log('📍 Contaminated areas fetched:', areas.length, areas)
       setContaminatedAreas(areas)
       
       // Filter areas within 2km of user location
-      if (userLocation && areas.length > 0) {
-        const nearby = areas.filter(area => {
-          if (area.latitude && area.longitude) {
-            const distance = calculateDistance(
-              userLocation.latitude,
-              userLocation.longitude,
-              area.latitude,
-              area.longitude
-            )
-            area.distance = distance
-            return distance <= 2 // 2km radius
+      if (userLocation) {
+        console.log('👤 User location:', userLocation)
+        
+        if (areas.length === 0) {
+          console.log('⚠️ No contaminated areas available')
+          setNearbyContaminatedAreas([])
+          return
+        }
+        
+        const nearby = []
+        areas.forEach(area => {
+          // Check if coordinates exist
+          if (typeof area.latitude !== 'number' || typeof area.longitude !== 'number') {
+            console.warn(`❌ Invalid coordinates for PIN ${area.pinCode}:`, { 
+              lat: area.latitude, 
+              lon: area.longitude,
+              latType: typeof area.latitude,
+              lonType: typeof area.longitude
+            })
+            return
           }
-          return false
+          
+          // Calculate distance
+          const distance = calculateDistance(
+            userLocation.latitude,
+            userLocation.longitude,
+            area.latitude,
+            area.longitude
+          )
+          
+          console.log(`📌 PIN ${area.pinCode}: ${distance.toFixed(2)}km from user`)
+          
+          if (distance <= 2) {
+            area.distance = distance
+            nearby.push(area)
+            console.log(`✅ PIN ${area.pinCode} - WITHIN 2KM RADIUS - Adding to alerts`)
+          } else {
+            console.log(`❌ PIN ${area.pinCode} - Outside 2km (${distance.toFixed(2)}km)`)
+          }
         })
+        
+        console.log(`🎯 Final nearby contaminated areas: ${nearby.length}`, nearby)
         setNearbyContaminatedAreas(nearby)
+      } else {
+        console.log('⏳ User location not yet available')
       }
     } catch (error) {
       console.error('Error fetching contaminated areas:', error)
+      console.error('Response data:', error.response?.data)
     }
   }
 

@@ -53,12 +53,26 @@ def send_to_lab():
         latitude = data.get('latitude')
         longitude = data.get('longitude')
         
+        print(f"\n📍 SEND-TO-LAB REQUEST:")
+        print(f"  PIN: {pin_code}")
+        print(f"  Coordinates received: Lat={latitude}, Lon={longitude}")
+        print(f"  Coordinate types: Lat type={type(latitude)}, Lon type={type(longitude)}")
+        
         if not all([pin_code, locality_name, district, description]) or report_count < 5:
             return jsonify({'error': 'Missing required fields or insufficient reports (min 5)'}), 400
         
-        # Get coordinates from reports (average of all report locations if available)
-        latitude = data.get('latitude') or None
-        longitude = data.get('longitude') or None
+        # Validate and convert coordinates to float
+        try:
+            if latitude is not None and longitude is not None:
+                latitude = float(latitude)
+                longitude = float(longitude)
+                print(f"  ✅ Coordinates converted to float: Lat={latitude}, Lon={longitude}")
+            else:
+                print(f"  ⚠️ WARNING: Missing coordinates - alerts won't show on map")
+        except (TypeError, ValueError) as e:
+            print(f"  ❌ Error converting coordinates: {e}")
+            latitude = None
+            longitude = None
         
         # Update all reports to 'contaminated' status
         for report_id in report_ids:
@@ -82,7 +96,11 @@ def send_to_lab():
             'phcSubmittedAt': datetime.now().isoformat()
         }
         
+        print(f"  Storing assignment with: latitude={lab_assignment.get('latitude')}, longitude={lab_assignment.get('longitude')}")
+        
         assignment_id = firebase_service.add_lab_assignment(lab_assignment)
+        
+        print(f"  ✅ Lab assignment created with ID: {assignment_id}\n")
         
         return jsonify({
             'success': True,
@@ -91,7 +109,9 @@ def send_to_lab():
         }), 201
     
     except Exception as e:
-        return jsonify({'error': str(e)}), 400
+        print(f"❌ Error in send_to_lab: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 400
 
 @phc_bp.route('/mark-clean/<report_id>', methods=['POST'])
@@ -186,14 +206,31 @@ def get_contaminated_areas():
         contaminated = {}
         for doc in assignments:
             data = doc.to_dict()
-            contaminated[doc.id] = {
-                'pinCode': data.get('pinCode'),
-                'localityName': data.get('localityName'),
-                'district': data.get('district'),
-                'reportCount': data.get('reportCount'),
-                'severity': data.get('severity'),
-                'status': data.get('status')
-            }
+            
+            # Extract latitude and longitude - REQUIRED for frontend distance calculation
+            latitude = data.get('latitude')
+            longitude = data.get('longitude')
+            
+            # Debug logging
+            pin_code = data.get('pinCode')
+            print(f"DEBUG: Area PIN {pin_code} - Lat: {latitude}, Lon: {longitude}")
+            
+            # Only include if we have coordinates
+            if latitude is not None and longitude is not None:
+                contaminated[doc.id] = {
+                    'pinCode': pin_code,
+                    'localityName': data.get('localityName'),
+                    'district': data.get('district'),
+                    'reportCount': data.get('reportCount'),
+                    'severity': data.get('severity'),
+                    'status': data.get('status'),
+                    'latitude': float(latitude),  # Ensure proper numeric type
+                    'longitude': float(longitude)  # Ensure proper numeric type
+                }
+            else:
+                print(f"WARNING: Missing coordinates for PIN {pin_code} - skipping from alerts")
+        
+        print(f"Total contaminated areas with valid coordinates: {len(contaminated)}")
         
         return jsonify({
             'success': True,
@@ -203,7 +240,42 @@ def get_contaminated_areas():
     except Exception as e:
         import logging
         logging.error(f"Error fetching contaminated areas: {str(e)}")
+        print(f"Full error: {str(e)}")
         return jsonify({
             'success': True,
             'data': {}
         }), 200
+@phc_bp.route('/debug/contaminated-areas', methods=['GET'])
+def debug_contaminated_areas():
+    """DEBUG: Get raw data from lab_assignments collection"""
+    try:
+        assignments = firebase_service.db.collection('lab_assignments').stream()
+        
+        debug_data = {}
+        for doc in assignments:
+            data = doc.to_dict()
+            debug_data[doc.id] = {
+                'pinCode': data.get('pinCode'),
+                'localityName': data.get('localityName'),
+                'district': data.get('district'),
+                'status': data.get('status'),
+                'latitude': data.get('latitude'),
+                'longitude': data.get('longitude'),
+                'latitude_type': str(type(data.get('latitude'))),
+                'longitude_type': str(type(data.get('longitude'))),
+                'all_fields': list(data.keys())
+            }
+        
+        return jsonify({
+            'success': True,
+            'total_assignments': len(debug_data),
+            'data': debug_data
+        }), 200
+    
+    except Exception as e:
+        import logging
+        logging.error(f"Debug error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 400

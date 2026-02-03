@@ -176,17 +176,34 @@ export default function PHCDashboard() {
       let latitude = null
       let longitude = null
       
+      console.log('🔍 Attempting to get PHC location...')
+      
       if (navigator.geolocation) {
         await new Promise((resolve) => {
-          navigator.geolocation.getCurrentPosition((position) => {
-            latitude = position.coords.latitude
-            longitude = position.coords.longitude
-            resolve()
-          }, () => resolve())
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              latitude = position.coords.latitude
+              longitude = position.coords.longitude
+              console.log('✅ PHC location captured:', { latitude, longitude })
+              resolve()
+            }, 
+            (error) => {
+              console.error('❌ Geolocation error:', error.message)
+              console.warn('⚠️ Sending to lab WITHOUT coordinates - alerts will not work!')
+              resolve()
+            },
+            {
+              enableHighAccuracy: true,
+              timeout: 10000,
+              maximumAge: 0
+            }
+          )
         })
+      } else {
+        console.warn('⚠️ Geolocation not supported - sending WITHOUT coordinates')
       }
       
-      const response = await api.post('/phc/send-to-lab', {
+      const payload = {
         pinCode: selectedReport.pinCode,
         localityName: selectedReport.locality,
         district: selectedReport.district,
@@ -198,9 +215,14 @@ export default function PHCDashboard() {
         description: sendFormData.description,
         latitude: latitude,
         longitude: longitude
-      })
+      }
+      
+      console.log('📤 Sending to lab:', payload)
+      
+      const response = await api.post('/phc/send-to-lab', payload)
 
       if (response.data.success) {
+        console.log('✅ Lab assignment created:', response.data.assignmentId)
         alert('Report sent to lab successfully!')
         setShowSendModal(false)
         setSendFormData({ description: '' })
@@ -208,6 +230,7 @@ export default function PHCDashboard() {
         fetchActiveReports()
       }
     } catch (err) {
+      console.error('❌ Failed to send to lab:', err)
       setError(err.response?.data?.error || 'Failed to send report')
     } finally {
       setLoading(false)
